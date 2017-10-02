@@ -2,4 +2,7 @@
 # tasks file for pacemaker
 
 - name: Estado del cluster
-  pacemaker_resource: state=enable resource=PNETCH_RG 
+  pacemaker_resource: state=enable resource=PNETCH_RG
+
+- name: Guardando salida
+  local_action: lineinfile line=i"{{ output.stdout_lines }}" dest=/home/pedro.trujillo/git/ansible/pacemaker/test state=present create=yes
