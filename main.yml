@@ -1,0 +1,10 @@
+---
+
+- name: Pacemaker
+  hosts: test
+  user: pedro.trujillo
+  become: yes
+  become_method: sudo
+  roles: 
+   - pacemaker
+ 
