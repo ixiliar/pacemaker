@@ -1,8 +1,74 @@
 ---
-# tasks file for pacemaker
+
+- name: Incluyendo variables
+  include_vars: main.yml
+
+- name: Limpiando archivos temporales
+  local_action: file path="/tmp/test_pacemaker" state=absent
+  ignore_errors: yes
+
+- name: Limpiando archivos temporales2
+  local_action: file path="/tmp/test_pacemaker2" state=absent
+  ignore_errors: yes
+
+- name: Limpiando archivos temporales3
+  local_action: file path="/tmp/test_pacemaker3" state=absent
+  ignore_errors: yes
+
+- name: Limpiando archivos temporales testpace
+  local_action: file path="/tmp/testpace" state=absent
+  ignore_errors: yes
+
 
 - name: Estado del cluster
   pacemaker_resource: state=enable resource=PNETCH_RG
+  register: output
 
 - name: Guardando salida
-  local_action: lineinfile line=i"{{ output.stdout_lines }}" dest=/home/pedro.trujillo/git/ansible/pacemaker/test state=present create=yes
+  local_action: lineinfile line="{{ output }}" dest="/tmp/test_pacemaker" state=present create=yes
+
+- name: Filtrando si la maquina tiene recursos activos
+  local_action: raw cat /tmp/test_pacemaker | grep  "{{ ansible_hostname }}" |wc -l >> /tmp/testpace
+  ignore_errors: yes
+
+- name: Registramos el nombre del grupo de recursos
+  raw: pcs resource |sed -n '1p' |sed -e 's/Resource Group://;s/^[ \t]*//' > /tmp/groupresu
+
+- name: Haciendo cat del archivo
+  command: cat /tmp/groupresu
+  register: rgroup
+
+- name: Definimos el nodo a migrar
+  set_fact: mighost={{ item }}
+  when: ansible_hostname != item
+  with_items: "{{ omonch }}"
+
+- name: Comprobando salida
+  local_action: raw cat /tmp/testpace
+  register: test
+  ignore_errors: yes
+
+- name: Unmanage cluster
+  command: pcs resource unmanage {{ rgroup.stdout }}
+  
+- name: Balanceo de recursos si procede.
+  command: pcs cluster standby {{ mighost }}-hb
+  when: test.stdout == '1\n'
+  ignore_errors: yes
+
+- name: Pausando
+  pause: seconds=180
+  when: test.stdout == '1\n'
+
+- name: Activando nodo
+  command: pcs cluster unstandby {{ mighost }}-hb
+  when: test.stdout == '1\n'
+  ignore_errors: yes
+
+- name: Pausando
+  pause: seconds=180
+  when: test.stdout == '1\n'
+
+- name: Unmanage cluster
+  command: pcs resource manage {{ rgroup.stdout }}
+

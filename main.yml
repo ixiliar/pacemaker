@@ -2,6 +2,7 @@
 
 - name: Pacemaker
   hosts: test
+  serial: 1
   user: pedro.trujillo
   become: yes
   become_method: sudo
